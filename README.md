@@ -16,5 +16,8 @@ $ export SERVER_PASSWORD="mypw"
 
 # WARNING: This will remove existing files in the backup folder, as existing 
 # corrupt files might cause the backup process to fail. 
-npm run dev -- --sync-id 029b71c3-9a91-42b0-8ac6-8a4650cbf15e --backup-dir backup
+$ npm run dev -- --sync-id 029b71c3-9a91-42b0-8ac6-8a4650cbf15e --backup-dir backup
+
+$ ls backup
+'2025-04-08 My-Finances-7a1809d.zip'
 ```
