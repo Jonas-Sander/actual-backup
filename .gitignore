@@ -18,6 +18,7 @@ devenv.local.nix
 # Nix build
 result
 result-*
+result/
 
 # Backup directory
 backup/
