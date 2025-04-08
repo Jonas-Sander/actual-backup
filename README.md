@@ -1,9 +1,13 @@
 > [!WARNING]  
-> THIS DOES NOT WORK YET: Importing the backup fails right now.
+> Make sure that the `@actual-app/api` in `package.json` matches the version running on your actual instace.
+> Otherwise importing will fail.
+
+Current version: `"@actual-app/api": "25.3.1"`
 
 ### Installation:
 1. [Install devenv](https://devenv.sh/getting-started/)
 2. Run: `$ devenv shell` in the root directory of this project.
+3. Change `@actual-app/api` in `package.json` to the version of your instance and run `npm install`.
 
 ### Usage
 ```shell
