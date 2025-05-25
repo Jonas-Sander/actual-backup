@@ -7,8 +7,13 @@
 }:
 
 {
-  # https://devenv.sh/basics/
-  env.GREET = "devenv";
+
+  env = {
+    ACTUAL_SERVER_URL = "http://localhost:3001";
+    ACTUAL_SERVER_PASSWORD = "testpassword";
+    ACTUAL_DATA_DIR = "/tmp/actual-data";
+    ACTUAL_PORT = "3001";
+  };
 
   # https://devenv.sh/packages/
   packages = [
@@ -27,12 +32,7 @@
 
   # https://devenv.sh/processes/
   processes.actual-server = {
-    exec = "actual-server --port 3001 --data-dir $ACTUAL_DATA_DIR";
-    env = {
-      ACTUAL_SERVER_URL = "http://localhost:3001";
-      ACTUAL_SERVER_PASSWORD = "testpassword"; # Consider a more secure way to handle passwords if needed
-      ACTUAL_DATA_DIR = "/tmp/actual-data"; # Temporary data location
-    };
+    exec = "actual-server --data-dir $ACTUAL_DATA_DIR --port $ACTUAL_PORT";
   };
 
   # https://devenv.sh/services/
@@ -47,7 +47,8 @@
     hello
     git --version
     mkdir -p $ACTUAL_DATA_DIR # Ensure data directory exists
-    echo "Actual server starting in the background on port 3001."
+
+    echo "To start the Actual server, run: devenv up or devenv up -d"
     echo "Data directory: $ACTUAL_DATA_DIR"
     echo "URL: $ACTUAL_SERVER_URL"
     echo "Password: $ACTUAL_SERVER_PASSWORD"
