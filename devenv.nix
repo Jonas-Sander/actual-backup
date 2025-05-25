@@ -35,17 +35,7 @@
     exec = "actual-server --data-dir $ACTUAL_DATA_DIR --port $ACTUAL_PORT";
   };
 
-  # https://devenv.sh/services/
-  # services.postgres.enable = true;
-
-  # https://devenv.sh/scripts/
-  scripts.hello.exec = ''
-    echo hello from $GREET
-  '';
-
   enterShell = ''
-    hello
-    git --version
     mkdir -p $ACTUAL_DATA_DIR # Ensure data directory exists
 
     echo "To start the Actual server, run: devenv up or devenv up -d"
@@ -65,9 +55,4 @@
     echo "Running tests"
     git --version | grep --color=auto "${pkgs.git.version}"
   '';
-
-  # https://devenv.sh/pre-commit-hooks/
-  # pre-commit.hooks.shellcheck.enable = true;
-
-  # See full reference at https://devenv.sh/reference/options/
 }
