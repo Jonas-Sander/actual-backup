@@ -11,7 +11,10 @@
   env.GREET = "devenv";
 
   # https://devenv.sh/packages/
-  packages = [ pkgs.git ];
+  packages = [
+    pkgs.git
+    pkgs.actual-server
+  ];
 
   # https://devenv.sh/languages/
   languages.javascript = {
@@ -23,7 +26,14 @@
   };
 
   # https://devenv.sh/processes/
-  # processes.cargo-watch.exec = "cargo-watch";
+  processes.actual-server = {
+    exec = "actual-server --port 3001 --data-dir $ACTUAL_DATA_DIR";
+    env = {
+      ACTUAL_SERVER_URL = "http://localhost:3001";
+      ACTUAL_SERVER_PASSWORD = "testpassword"; # Consider a more secure way to handle passwords if needed
+      ACTUAL_DATA_DIR = "/tmp/actual-data"; # Temporary data location
+    };
+  };
 
   # https://devenv.sh/services/
   # services.postgres.enable = true;
@@ -36,6 +46,11 @@
   enterShell = ''
     hello
     git --version
+    mkdir -p $ACTUAL_DATA_DIR # Ensure data directory exists
+    echo "Actual server starting in the background on port 3001."
+    echo "Data directory: $ACTUAL_DATA_DIR"
+    echo "URL: $ACTUAL_SERVER_URL"
+    echo "Password: $ACTUAL_SERVER_PASSWORD"
   '';
 
   # https://devenv.sh/tasks/

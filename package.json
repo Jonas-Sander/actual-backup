@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/backup-tool.js",
-    "dev": "ts-node src/backup-tool.ts"
+    "dev": "ts-node src/backup-tool.ts",
+    "test": "npm run build && ts-node src/backup-tool.test.ts"
   },
   "dependencies": {
     "@actual-app/api": "25.5.0",
@@ -17,6 +18,8 @@
     "@types/adm-zip": "^0.5.7",
     "@types/node": "^22.14.0",
     "@types/yargs": "^17.0.33",
+    "sqlite3": "^5.1.7",
+    "@types/sqlite3": "^3.1.11",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   }

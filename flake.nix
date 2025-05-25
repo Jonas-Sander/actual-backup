@@ -54,6 +54,7 @@
           # Packages needed by the application when it runs.
           buildInputs = [
             pkgs.nodejs # Node.js runtime is required to execute the compiled JS
+            pkgs.sqlite # Needed for the sqlite3 npm package used in tests
           ];
 
           # Disable the default npm install command provided by buildNpmPackage.
@@ -100,6 +101,29 @@
 
             # Run standard post-installation hooks
             runHook postInstall
+          '';
+
+          # Enable and define the check phase for running tests
+          doCheck = true;
+          checkPhase = ''
+            runHook preCheck
+
+            # Set HOME to a writable directory in the sandbox, as some npm packages or tests might need it.
+            export HOME=$(mktemp -d)
+
+            echo "Running 'npm test' in checkPhase..."
+            echo "Warning: The test suite ('src/backup-tool.test.ts') is designed to connect to an Actual server instance."
+            echo "This server is typically started by 'devenv up' and available at http://localhost:3001."
+            echo "In the sandboxed Nix build environment, this server will not be available."
+            echo "Therefore, the tests are expected to fail during the checkPhase due to connection errors."
+            echo "The purpose of this checkPhase is to demonstrate test integration structure."
+            
+            # Attempt to run the tests. The test script itself has defaults for server URL and password
+            # (http://localhost:3001 and 'testpassword') if environment variables are not set.
+            # These will attempt to connect to a non-existent server in the sandbox.
+            npm test
+
+            runHook postCheck
           '';
 
           # Metadata associated with the package
