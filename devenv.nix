@@ -11,10 +11,10 @@
   env = {
     ACTUAL_SERVER_URL = "http://localhost:3001";
     ACTUAL_SERVER_PASSWORD = "testpassword";
-    ACTUAL_DATA_DIR = "/tmp/actual-data";
+    ACTUAL_DATA_DIR = "./test-actual-server-data";
     ACTUAL_PORT = "3001";
+    DEBUG_ACTUAL_SERVER_DATADIR = "FROM_DEVENV_NIX_TEST_ACTUAL_SERVER_DATA";
   };
-
   # https://devenv.sh/packages/
   packages = [
     pkgs.git
@@ -32,7 +32,7 @@
 
   # https://devenv.sh/processes/
   processes.actual-server = {
-    exec = "actual-server --data-dir $ACTUAL_DATA_DIR --port $ACTUAL_PORT";
+    exec = "echo 'ACTUAL_DATA_DIR for exec: $ACTUAL_DATA_DIR' && actual-server --data-dir $ACTUAL_DATA_DIR --port $ACTUAL_PORT";
   };
 
   enterShell = ''

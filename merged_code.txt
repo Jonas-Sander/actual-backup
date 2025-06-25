@@ -1,3 +1,571 @@
+### File: .envrc ###
+source_url "https://raw.githubusercontent.com/cachix/devenv/82c0147677e510b247d8b9165c54f73d32dfd899/direnvrc" "sha256-7u4iDd1nZpxL4tCzmPG0dQgC5V+/44Ba+tHkPob1v2k="
+
+use devenv
+
+### File: .gitignore ###
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# TypeScript
+dist/
+*.tsbuildinfo
+
+# Devenv
+.devenv*
+devenv.local.nix
+
+# direnv
+.direnv
+
+# Nix build
+result
+result-*
+result/
+
+# Backup directory
+backup/
+
+# Logs
+*.log
+
+# Environment variables
+.env
+.env.*
+
+# System files
+.DS_Store
+Thumbs.db
+### File: LICENSE ###
+MIT License
+
+Copyright (c) 2025 Jonas Sander
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+### File: README.md ###
+> [!WARNING]  
+> Make sure that the `@actual-app/api` in `package.json` matches the version running on your actual instace.
+> Otherwise importing will fail.
+
+Current supported version: `"@actual-app/api": "25.5.0"`.  
+Can be changed via `package.json`.
+
+A tool to automate the export of data of an actual user.  
+Exports the data as a zip file containing `db.sqlite` and `metadata.json` files inside the `backup-dir`.  
+It can be imported into another Actual instance by closing an open file (if any), then clicking the “Import file” button, then choosing “Actual.” 
+
+### Prerequisites
+To run this tool one needs to find out his Sync ID.  
+In Actual Budget go to Settings → Show advanced settings → Sync ID.
+
+### Run via nix
+```
+$ export SERVER_URL="https://my-actual-server.com"
+$ export SERVER_PASSWORD="mypw"
+
+$ nix run github:Jonas-Sander/actual-backup -- --sync-id 029b71c3-9a91-42b0-8ac6-8a4650cbf15e --backup-dir backup
+```
+
+### Installation:
+1. [Install devenv](https://devenv.sh/getting-started/)
+2. Run: `$ devenv shell` in the root directory of this project.
+3. Change `@actual-app/api` in `package.json` to the version of your instance and run `npm install`.
+
+### Dev Usage
+```shell
+$ export SERVER_URL="https://my-actual-server.com"
+$ export SERVER_PASSWORD="mypw"
+
+$ npm run dev -- --sync-id 029b71c3-9a91-42b0-8ac6-8a4650cbf15e --backup-dir backup
+
+$ ls backup
+'2025-04-08 My-Finances-7a1809d.zip'
+```
+
+### Updating actual version
+1. Update actual version in `README.md` and `package.json` (e.g. `25.4.0` to `25.5.0`).
+2. Run `devenv shell`
+3. Run `npm install` to update the package.lock file (otherwise `nix build` won't work)
+4. Replace `npmDepsHash = "sha256-ZTfXjTZE5f...";` in `flake.nix` with `npmDepsHash = pkgs.lib.fakeHash;`
+5. Run `nix build` and copy the `got:    sha256-HaOhKSfkFC4PAvO...`
+6. Replace `npmDepsHash = pkgs.lib.fakeHash;` with the new hash (i.e. `npmDepsHash = "sha256-HaOhKSfkFC4PAvO...";`).
+7. Run `nix build` again. It should now succeed.
+8. Test changes.
+9. If it works, commit the change or open a PR.
+
+## Running Tests
+
+The automated tests verify the backup tool's functionality by creating a test Actual Budget instance, populating it with data, running the backup tool, and then analyzing the backup to ensure data integrity.
+
+### Prerequisites
+
+1.  **Nix Development Environment:** Ensure you are in the Nix development shell. You can enter it by running:
+    ```bash
+    nix develop
+    # or
+    devenv shell
+    ```
+2.  **Test Actual Server:** The tests require an instance of the Actual server to be running.
+    *   If you are using `devenv`, the server is configured to start automatically when you run `devenv up` or when you enter the shell using `devenv shell` (or `nix develop`). This is managed by the `processes.actual-server` definition and `enterShell` script in `devenv.nix`.
+    *   The server will be available at `http://localhost:3001` and use the password `testpassword`, as defined by `ACTUAL_SERVER_URL` and `ACTUAL_SERVER_PASSWORD` in `devenv.nix`.
+    *   Test data for the server is stored in `/tmp/actual-data` (or the path specified by `ACTUAL_DATA_DIR` in `devenv.nix`). The test script itself also uses a temporary sub-directory (`test-setup-temp-data`) within this for its client-side API cache, which it cleans up.
+
+### Executing Tests
+
+Once the development environment is active and the test server is running, you can execute the tests using npm:
+
+```bash
+npm test
+```
+
+This command will:
+1.  Build the `actual-backup-tool` (compile TypeScript via `npm run build`).
+2.  Run the test suite located in `src/backup-tool.test.ts` using `ts-node`.
+
+The test suite (`src/backup-tool.test.ts`) will:
+*   Connect to the test Actual server using the credentials and URL defined in `devenv.nix` (and picked up by the test script from environment variables).
+*   Create a new temporary budget file (e.g., `TestBudgetForBackupTool.actual`) on the server for the test run.
+*   Populate this budget with sample accounts, categories, and transactions using the Actual API.
+*   Execute the backup tool (`src/backup-tool.ts`) against this test budget, instructing it to save the backup to a temporary directory.
+*   Extract the contents of the generated backup ZIP file.
+*   Verify the integrity of the backup by:
+    *   Checking for the presence of `db.sqlite` and `metadata.json`.
+    *   Querying the SQLite database (`db.sqlite`) to ensure the sample accounts, categories, and transactions are present and correct.
+*   Clean up temporary files and directories created during the test (e.g., the backup zip, its extracted contents, and the client-side API session data).
+### File: devenv.lock ###
+{
+  "nodes": {
+    "devenv": {
+      "locked": {
+        "dir": "src/modules",
+        "lastModified": 1747717470,
+        "owner": "cachix",
+        "repo": "devenv",
+        "rev": "c7f2256ee4a4a4ee9cbf1e82a6e49b253c374995",
+        "type": "github"
+      },
+      "original": {
+        "dir": "src/modules",
+        "owner": "cachix",
+        "repo": "devenv",
+        "type": "github"
+      }
+    },
+    "flake-compat": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1747046372,
+        "owner": "edolstra",
+        "repo": "flake-compat",
+        "rev": "9100a0f413b0c601e0533d1d94ffd501ce2e7885",
+        "type": "github"
+      },
+      "original": {
+        "owner": "edolstra",
+        "repo": "flake-compat",
+        "type": "github"
+      }
+    },
+    "gitignore": {
+      "inputs": {
+        "nixpkgs": [
+          "pre-commit-hooks",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1709087332,
+        "owner": "hercules-ci",
+        "repo": "gitignore.nix",
+        "rev": "637db329424fd7e46cf4185293b9cc8c88c95394",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hercules-ci",
+        "repo": "gitignore.nix",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1746807397,
+        "owner": "cachix",
+        "repo": "devenv-nixpkgs",
+        "rev": "c5208b594838ea8e6cca5997fbf784b7cca1ca90",
+        "type": "github"
+      },
+      "original": {
+        "owner": "cachix",
+        "ref": "rolling",
+        "repo": "devenv-nixpkgs",
+        "type": "github"
+      }
+    },
+    "pre-commit-hooks": {
+      "inputs": {
+        "flake-compat": "flake-compat",
+        "gitignore": "gitignore",
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1747372754,
+        "owner": "cachix",
+        "repo": "pre-commit-hooks.nix",
+        "rev": "80479b6ec16fefd9c1db3ea13aeb038c60530f46",
+        "type": "github"
+      },
+      "original": {
+        "owner": "cachix",
+        "repo": "pre-commit-hooks.nix",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "devenv": "devenv",
+        "nixpkgs": "nixpkgs",
+        "pre-commit-hooks": "pre-commit-hooks"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
+
+### File: devenv.nix ###
+{
+  pkgs,
+  lib,
+  config,
+  inputs,
+  ...
+}:
+
+{
+  # https://devenv.sh/basics/
+  env.GREET = "devenv";
+
+  # https://devenv.sh/packages/
+  packages = [
+    pkgs.git
+    pkgs.actual-server
+  ];
+
+  # https://devenv.sh/languages/
+  languages.javascript = {
+    enable = true;
+    npm = {
+      enable = true;
+      install.enable = true;
+    };
+  };
+
+  # https://devenv.sh/processes/
+  processes.actual-server = {
+    exec = "actual-server --port 3001 --data-dir $ACTUAL_DATA_DIR";
+    env = {
+      ACTUAL_SERVER_URL = "http://localhost:3001";
+      ACTUAL_SERVER_PASSWORD = "testpassword"; # Consider a more secure way to handle passwords if needed
+      ACTUAL_DATA_DIR = "/tmp/actual-data"; # Temporary data location
+    };
+  };
+
+  # https://devenv.sh/services/
+  # services.postgres.enable = true;
+
+  # https://devenv.sh/scripts/
+  scripts.hello.exec = ''
+    echo hello from $GREET
+  '';
+
+  enterShell = ''
+    hello
+    git --version
+    mkdir -p $ACTUAL_DATA_DIR # Ensure data directory exists
+    echo "Actual server starting in the background on port 3001."
+    echo "Data directory: $ACTUAL_DATA_DIR"
+    echo "URL: $ACTUAL_SERVER_URL"
+    echo "Password: $ACTUAL_SERVER_PASSWORD"
+  '';
+
+  # https://devenv.sh/tasks/
+  # tasks = {
+  #   "myproj:setup".exec = "mytool build";
+  #   "devenv:enterShell".after = [ "myproj:setup" ];
+  # };
+
+  # https://devenv.sh/tests/
+  enterTest = ''
+    echo "Running tests"
+    git --version | grep --color=auto "${pkgs.git.version}"
+  '';
+
+  # https://devenv.sh/pre-commit-hooks/
+  # pre-commit.hooks.shellcheck.enable = true;
+
+  # See full reference at https://devenv.sh/reference/options/
+}
+
+### File: devenv.yaml ###
+# yaml-language-server: $schema=https://devenv.sh/devenv.schema.json
+inputs:
+  nixpkgs:
+    url: github:cachix/devenv-nixpkgs/rolling
+
+# If you're using non-OSS software, you can set allowUnfree to true.
+# allowUnfree: true
+
+# If you're willing to use a package that's vulnerable
+# permittedInsecurePackages:
+#  - "openssl-1.1.1w"
+
+# If you have more than one devenv you can merge them
+#imports:
+# - ./backend
+
+### File: flake.lock ###
+{
+  "nodes": {
+    "flake-utils": {
+      "inputs": {
+        "systems": "systems"
+      },
+      "locked": {
+        "lastModified": 1731533236,
+        "narHash": "sha256-l0KFg5HjrsfsO/JpG+r7fRrqm12kzFHyUHqHCVpMMbI=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "11707dc2f618dd54ca8739b309ec4fc024de578b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1743964447,
+        "narHash": "sha256-nEo1t3Q0F+0jQ36HJfbJtiRU4OI+/0jX/iITURKe3EE=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "063dece00c5a77e4a0ea24e5e5a5bd75232806f8",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "flake-utils": "flake-utils",
+        "nixpkgs": "nixpkgs"
+      }
+    },
+    "systems": {
+      "locked": {
+        "lastModified": 1681028828,
+        "narHash": "sha256-Vy1rq5AaRuLzOxct8nz4T6wlgyUR7zLU309k9mBC768=",
+        "owner": "nix-systems",
+        "repo": "default",
+        "rev": "da67096a3b9bf56a91d16901293e51ba5b49a27e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-systems",
+        "repo": "default",
+        "type": "github"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
+
+### File: flake.nix ###
+{
+  description = "Actual Budget Backup Tool";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+
+    # flake-utils: Provides helper functions to define outputs for multiple systems easily.
+    flake-utils.url = "github:numtide/flake-utils";
+  };
+
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+      ... # Allows for potential future inputs
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
+      let
+        pkgs = import nixpkgs { inherit system; };
+
+        # Read the application version dynamically from package.json
+        appVersion = (builtins.fromJSON (builtins.readFile ./package.json)).version;
+      in
+      {
+        packages.actual-backup = pkgs.buildNpmPackage {
+          pname = "actual-backup-tool";
+          version = appVersion;
+
+          src = ./.;
+
+          # Hash of the node_modules structure based on package-lock.json.
+          # Ensures reproducible dependency fetching.
+          # If dependencies change (package-lock.json updated), `nix build` will fail
+          # with a hash mismatch, providing the correct hash to paste here.
+          npmDepsHash = "sha256-HaOhKSfkFC4PAvOhMbkKK4M3kS/vY559I9vv6bQRT2Q=";
+          # npmDepsHash = pkgs.lib.fakeHash;
+
+          # Allow build scripts to write to the npm cache if needed.
+          makeCacheWritable = true;
+
+          # Specify the build script from package.json ("scripts": { "build": "tsc" })
+          npmBuildScript = "build";
+
+          # --- Build-time Dependencies ---
+          # Packages needed ONLY on the build machine to build the application.
+          # They are *not* included in the final runtime closure unless also in buildInputs.
+          nativeBuildInputs = [
+            pkgs.nodejs # Needed for npm/node commands during build
+            pkgs.nodePackages.typescript # Needed for the `tsc` command during the build script
+          ];
+          # --- Runtime Dependencies ---
+          # Packages needed by the application when it runs.
+          buildInputs = [
+            pkgs.nodejs # Node.js runtime is required to execute the compiled JS
+            pkgs.sqlite # Needed for the sqlite3 npm package used in tests
+          ];
+
+          # Disable the default npm install command provided by buildNpmPackage.
+          # We handle the installation process manually in installPhase for more control.
+          dontNpmInstall = true;
+
+          # Custom installation script run after the build step.
+          # This phase copies the necessary built artifacts into the Nix store ($out).
+          installPhase = ''
+            # Run standard pre-installation hooks
+            runHook preInstall
+
+            # Create the directory structure within the output path ($out)
+            # - $out/libexec/actual-backup: Holds the application code and node_modules
+            # - $out/bin: Holds the executable wrapper script
+            mkdir -p $out/libexec/actual-backup $out/bin
+
+            # Copy the compiled JavaScript code from the build step (`tsc` output)
+            echo "Copying compiled dist directory..."
+            cp -R ./dist $out/libexec/actual-backup/
+
+            # Copy the node_modules directory prepared by buildNpmPackage's internal steps.
+            # This directory contains ALL dependencies (including devDependencies) because
+            # NODE_ENV was not set to production *before* the build step, allowing `tsc`
+            # (a devDependency) and its types (`@types/node`) to be found.
+            echo "Copying prepared node_modules directory..."
+            cp -R ./node_modules $out/libexec/actual-backup/
+
+            # Copy package.json into the libexec dir. This might be needed if the
+            # application reads its own version at runtime (e.g., for a --version flag).
+            # If not needed, this copy can be removed.
+            cp ./package.json $out/libexec/actual-backup/
+
+            # Create the executable wrapper script.
+            # `substitute` replaces placeholders in `./wrapper.sh` with Nix store paths.
+            echo "Creating wrapper script..."
+            substitute ${./wrapper.sh} $out/bin/actual-backup \
+              --subst-var-by nodejs_bin_path ${pkgs.nodejs}/bin/node \
+              --subst-var-by app_root $out/libexec/actual-backup \
+              --subst-var-by entry_point dist/backup-tool.js # Specify the main JS file
+
+            # Make the wrapper script executable
+            chmod +x $out/bin/actual-backup
+
+            # Run standard post-installation hooks
+            runHook postInstall
+          '';
+
+          # Enable and define the check phase for running tests
+          doCheck = true;
+          checkPhase = ''
+            runHook preCheck
+
+            # Set HOME to a writable directory in the sandbox, as some npm packages or tests might need it.
+            export HOME=$(mktemp -d)
+
+            echo "Running 'npm test' in checkPhase..."
+            echo "Warning: The test suite ('src/backup-tool.test.ts') is designed to connect to an Actual server instance."
+            echo "This server is typically started by 'devenv up' and available at http://localhost:3001."
+            echo "In the sandboxed Nix build environment, this server will not be available."
+            echo "Therefore, the tests are expected to fail during the checkPhase due to connection errors."
+            echo "The purpose of this checkPhase is to demonstrate test integration structure."
+            
+            # Attempt to run the tests. The test script itself has defaults for server URL and password
+            # (http://localhost:3001 and 'testpassword') if environment variables are not set.
+            # These will attempt to connect to a non-existent server in the sandbox.
+            npm test
+
+            runHook postCheck
+          '';
+
+          # Metadata associated with the package
+          meta = with pkgs.lib; {
+            description = "A tool to backup Actual Budget data via the API";
+            homepage = "https://github.com/Jonas-Sander/actual-backup";
+            license = licenses.mit;
+            maintainers = [
+              "Jonas-Sander"
+            ];
+            platforms = platforms.linux ++ platforms.darwin;
+          };
+        };
+
+        # Default package: `nix build .` will build this package
+        packages.default = self.packages.${system}.actual-backup;
+
+        # Define runnable applications provided by the flake
+        apps.actual-backup = {
+          type = "app"; # Standard type for runnable applications
+          # The command to execute when running `nix run .#actual-backup`
+          program = "${self.packages.${system}.actual-backup}/bin/actual-backup";
+        };
+
+        # Default application: `nix run .` will run this application
+        apps.default = self.apps.${system}.actual-backup;
+      }
+    );
+}
+
+### File: package-lock.json ###
 {
   "name": "actual_backup_tool",
   "version": "1.0.0",
@@ -10,15 +578,12 @@
       "dependencies": {
         "@actual-app/api": "25.5.0",
         "adm-zip": "^0.5.16",
-        "fs-extra": "^11.3.0",
         "yargs": "^17.7.2"
       },
       "devDependencies": {
         "@types/adm-zip": "^0.5.7",
-        "@types/fs-extra": "^11.0.4",
         "@types/node": "^22.14.0",
         "@types/sqlite3": "^3.1.11",
-        "@types/uuid": "^9.0.8",
         "@types/yargs": "^17.0.33",
         "sqlite3": "^5.1.7",
         "ts-node": "^10.9.2",
@@ -174,27 +739,6 @@
         "@types/node": "*"
       }
     },
-    "node_modules/@types/fs-extra": {
-      "version": "11.0.4",
-      "resolved": "https://registry.npmjs.org/@types/fs-extra/-/fs-extra-11.0.4.tgz",
-      "integrity": "sha512-yTbItCNreRooED33qjunPthRcSjERP1r4MqCZc7wv0u2sUkzTFp45tgUfS5+r7FrZPdmCCNflLhVSP/o+SemsQ==",
-      "dev": true,
-      "license": "MIT",
-      "dependencies": {
-        "@types/jsonfile": "*",
-        "@types/node": "*"
-      }
-    },
-    "node_modules/@types/jsonfile": {
-      "version": "6.1.4",
-      "resolved": "https://registry.npmjs.org/@types/jsonfile/-/jsonfile-6.1.4.tgz",
-      "integrity": "sha512-D5qGUYwjvnNNextdU59/+fI+spnwtTFmyQP0h+PfIOSkNfpU6AOICUOkm4i0OnSk+NyjdPJrxCDro0sJsWlRpQ==",
-      "dev": true,
-      "license": "MIT",
-      "dependencies": {
-        "@types/node": "*"
-      }
-    },
     "node_modules/@types/node": {
       "version": "22.14.0",
       "resolved": "https://registry.npmjs.org/@types/node/-/node-22.14.0.tgz",
@@ -213,13 +757,6 @@
       "dependencies": {
         "@types/node": "*"
       }
-    },
-    "node_modules/@types/uuid": {
-      "version": "9.0.8",
-      "resolved": "https://registry.npmjs.org/@types/uuid/-/uuid-9.0.8.tgz",
-      "integrity": "sha512-jg+97EGIcY9AGHJJRaaPVgetKDsrTgbRjQ5Msgjh/DQKEFl0DtyRr/VCOyD1T2R1MNeWPK/u7JoGhlDZnKBAfA==",
-      "dev": true,
-      "license": "MIT"
     },
     "node_modules/@types/yargs": {
       "version": "17.0.33",
@@ -775,20 +1312,6 @@
       "integrity": "sha512-y6OAwoSIf7FyjMIv94u+b5rdheZEjzR63GTyZJm5qh4Bi+2YgwLCcI/fPFZkL5PSixOt6ZNKm+w+Hfp/Bciwow==",
       "license": "MIT"
     },
-    "node_modules/fs-extra": {
-      "version": "11.3.0",
-      "resolved": "https://registry.npmjs.org/fs-extra/-/fs-extra-11.3.0.tgz",
-      "integrity": "sha512-Z4XaCL6dUDHfP/jT25jJKMmtxvuwbkrD1vNSMFlo9lNLY2c5FHYSQgHPRZUjAB26TpDEoW9HCOgplrdbaPV/ew==",
-      "license": "MIT",
-      "dependencies": {
-        "graceful-fs": "^4.2.0",
-        "jsonfile": "^6.0.1",
-        "universalify": "^2.0.0"
-      },
-      "engines": {
-        "node": ">=14.14"
-      }
-    },
     "node_modules/fs-minipass": {
       "version": "2.1.0",
       "resolved": "https://registry.npmjs.org/fs-minipass/-/fs-minipass-2.1.0.tgz",
@@ -875,7 +1398,9 @@
     "node_modules/graceful-fs": {
       "version": "4.2.11",
       "resolved": "https://registry.npmjs.org/graceful-fs/-/graceful-fs-4.2.11.tgz",
-      "integrity": "sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ=="
+      "integrity": "sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==",
+      "dev": true,
+      "optional": true
     },
     "node_modules/has-unicode": {
       "version": "2.0.1",
@@ -1057,18 +1582,6 @@
       "integrity": "sha512-4bYVV3aAMtDTTu4+xsDYa6sy9GyJ69/amsu9sYF2zqjiEoZA5xJi3BrfX3uY+/IekIu7MwdObdbDWpoZdBv3/A==",
       "dev": true,
       "optional": true
-    },
-    "node_modules/jsonfile": {
-      "version": "6.1.0",
-      "resolved": "https://registry.npmjs.org/jsonfile/-/jsonfile-6.1.0.tgz",
-      "integrity": "sha512-5dgndWOriYSm5cnYaJNhalLNDKOqFwyDB/rr1E9ZsGciGvKPs8R2xYGCacuf3z6K1YKDz182fd+fY3cn3pMqXQ==",
-      "license": "MIT",
-      "dependencies": {
-        "universalify": "^2.0.0"
-      },
-      "optionalDependencies": {
-        "graceful-fs": "^4.1.6"
-      }
     },
     "node_modules/lru-cache": {
       "version": "6.0.0",
@@ -1951,15 +2464,6 @@
         "imurmurhash": "^0.1.4"
       }
     },
-    "node_modules/universalify": {
-      "version": "2.0.1",
-      "resolved": "https://registry.npmjs.org/universalify/-/universalify-2.0.1.tgz",
-      "integrity": "sha512-gptHNQghINnc/vTGIk0SOFGFNXw7JVrlRUtConJRlvaw6DuX0wO5Jeko9sWrMBhh+PsYAZ7oXAiOnf/UKogyiw==",
-      "license": "MIT",
-      "engines": {
-        "node": ">= 10.0.0"
-      }
-    },
     "node_modules/util-deprecate": {
       "version": "1.0.2",
       "resolved": "https://registry.npmjs.org/util-deprecate/-/util-deprecate-1.0.2.tgz",
@@ -2098,3 +2602,719 @@
     }
   }
 }
+
+### File: package.json ###
+{
+  "name": "actual_backup_tool",
+  "version": "1.0.0",
+  "description": "Tool to backup Actual Budget data",
+  "main": "dist/backup-tool.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/backup-tool.js",
+    "dev": "ts-node src/backup-tool.ts",
+    "test": "npm run build && ts-node src/backup-tool.test.ts"
+  },
+  "dependencies": {
+    "@actual-app/api": "25.5.0",
+    "adm-zip": "^0.5.16",
+    "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.7",
+    "@types/node": "^22.14.0",
+    "@types/yargs": "^17.0.33",
+    "sqlite3": "^5.1.7",
+    "@types/sqlite3": "^3.1.11",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}
+### File: src/backup-tool.test.ts ###
+import fs from 'fs/promises';
+import path from 'path';
+import { exec } from 'child_process';
+import AdmZip from 'adm-zip';
+import { strict as assert } from 'assert';
+import sqlite3 from 'sqlite3';
+import os from 'os'; // For os.tmpdir()
+
+// Define interfaces for your test data
+interface TestTransaction {
+  id?: string; // Actual API might return id
+  date: string;
+  amount: number;
+  payee_name?: string;
+  notes?: string;
+  account_id: string;
+  category_id?: string;
+  account?: string; // Used by addTransactions
+  category?: string; // Used by addTransactions
+}
+
+interface TestAccount {
+  id?: string; // Actual API might return id
+  name: string;
+  type: 'checking' | 'savings' | string;
+}
+
+interface TestCategory {
+  id?: string; // Actual API might return id
+  name: string;
+}
+
+interface TestData {
+  accounts: TestAccount[];
+  categories: TestCategory[];
+  // transactions are not directly returned by setupTestData in a queryable list by ID
+}
+
+
+const ACTUAL_SERVER_URL = process.env.ACTUAL_SERVER_URL || 'http://localhost:3001';
+const ACTUAL_SERVER_PASSWORD = process.env.ACTUAL_SERVER_PASSWORD || 'testpassword';
+const ACTUAL_DATA_DIR = process.env.ACTUAL_DATA_DIR || '/tmp/actual-data';
+
+const TEST_SETUP_DATA_SUBDIR = 'test-setup-temp-data';
+
+
+async function initializeApi() {
+  const api = await import('@actual-app/api');
+  const testSetupDataDir = path.join(ACTUAL_DATA_DIR, TEST_SETUP_DATA_SUBDIR);
+  await fs.mkdir(testSetupDataDir, { recursive: true });
+
+  console.log(`Initializing API with server URL: ${ACTUAL_SERVER_URL} and data directory: ${testSetupDataDir}`);
+  await api.init({
+    serverURL: ACTUAL_SERVER_URL,
+    password: ACTUAL_SERVER_PASSWORD,
+    dataDir: testSetupDataDir
+  });
+  return api;
+}
+
+export async function setupTestData(api: any, budgetId: string): Promise<TestData> {
+  console.log(`Setting up test data for budget ID: ${budgetId}...`);
+
+  const account1 = await api.createAccount({ name: 'Test Checking Account', type: 'checking' }, budgetId);
+  const account2 = await api.createAccount({ name: 'Test Savings Account', type: 'savings' }, budgetId);
+  console.log('Created accounts:', account1.id, account2.id);
+
+  const category1 = await api.createCategory({ name: 'Groceries' }, budgetId);
+  const category2 = await api.createCategory({ name: 'Utilities' }, budgetId);
+  console.log('Created categories:', category1.id, category2.id);
+
+  const transactions: Partial<TestTransaction>[] = [
+    { date: '2023-01-15', amount: -5000, payee_name: 'Grocery Store', account_id: account1.id, category_id: category1.id, notes: 'Test grocery transaction' },
+    { date: '2023-01-16', amount: -7500, payee_name: 'Electric Company', account_id: account1.id, category_id: category2.id, notes: 'Test utility bill' },
+    { date: '2023-01-17', amount: 200000, payee_name: 'Salary Deposit', account_id: account1.id, notes: 'Test salary deposit' },
+  ];
+
+  await api.addTransactions(budgetId, transactions.map(t => ({
+    ...t,
+    account: t.account_id,
+    category: t.category_id,
+  })));
+  console.log('Added transactions.');
+
+  return {
+    accounts: [account1, account2],
+    categories: [category1, category2],
+  };
+}
+
+export async function cleanupTestData() {
+  console.log('Cleaning up test data (client-side session data)...');
+  const testSetupDataDir = path.join(ACTUAL_DATA_DIR, TEST_SETUP_DATA_SUBDIR);
+  try {
+    await fs.rm(testSetupDataDir, { recursive: true, force: true });
+    console.log(`Cleaned up test setup temp data dir: ${testSetupDataDir}`);
+  } catch (error) {
+    console.error(`Error during test data cleanup of ${testSetupDataDir}:`, error);
+  }
+}
+
+async function runBackupTest(budgetId: string, createdTestData: TestData) {
+  console.log(`\n--- Starting Backup Tool Test for budget ID: ${budgetId} ---`);
+  const tempBackupDir = await fs.mkdtemp(path.join(os.tmpdir(), 'actual-backup-test-'));
+  const tempExtractDir = await fs.mkdtemp(path.join(os.tmpdir(), 'actual-extract-test-'));
+  // Use ts-node to run the TypeScript backup tool directly
+  const backupToolScript = path.resolve(__dirname, './backup-tool.ts'); 
+
+  // Construct the command
+  // Ensure SERVER_URL and SERVER_PASSWORD are set in the environment for the backup tool
+  const command = `ts-node ${backupToolScript} --sync-id ${budgetId} --backup-dir ${tempBackupDir}`;
+  
+  console.log(`Executing backup tool: ${command}`);
+  console.log(`  SERVER_URL: ${ACTUAL_SERVER_URL}`);
+  // Not logging password
+
+  try {
+    const { stdout, stderr } = await new Promise<{ stdout: string, stderr: string }>((resolve, reject) => {
+      exec(command, { 
+        env: { 
+          ...process.env, 
+          SERVER_URL: ACTUAL_SERVER_URL, 
+          SERVER_PASSWORD: ACTUAL_SERVER_PASSWORD,
+          // ts-node might need this if run from a different context in some setups
+          NODE_ENV: process.env.NODE_ENV || 'development' 
+        } 
+      }, (error, stdout, stderr) => {
+        if (error) {
+          console.error(`Backup tool execution error: ${error.message}`);
+          console.error(`stderr: ${stderr}`);
+          console.error(`stdout: ${stdout}`);
+          return reject(error);
+        }
+        resolve({ stdout, stderr });
+      });
+    });
+
+    console.log(`Backup tool stdout: ${stdout}`);
+    if (stderr) {
+      // Non-fatal errors from actual-server might go to stderr but tool can still succeed
+      console.warn(`Backup tool stderr: ${stderr}`); 
+    }
+
+    // Locate the backup ZIP file
+    const filesInBackupDir = await fs.readdir(tempBackupDir);
+    const zipFile = filesInBackupDir.find(f => f.endsWith('.zip'));
+    assert(zipFile, `Backup ZIP file not found in ${tempBackupDir}`);
+    console.log(`Found backup ZIP file: ${zipFile}`);
+    const zipFilePath = path.join(tempBackupDir, zipFile);
+
+    // Extract the backup ZIP
+    console.log(`Extracting ${zipFilePath} to ${tempExtractDir}`);
+    const admZip = new AdmZip(zipFilePath);
+    admZip.extractAllTo(tempExtractDir, true);
+    const extractedFiles = await fs.readdir(tempExtractDir);
+    console.log('Extracted files:', extractedFiles);
+
+    // Verify backup contents
+    assert(extractedFiles.includes('db.sqlite'), 'db.sqlite not found in backup');
+    assert(extractedFiles.includes('metadata.json'), 'metadata.json not found in backup');
+    console.log('Core backup files (db.sqlite, metadata.json) found.');
+
+    // Verify database content
+    const dbPath = path.join(tempExtractDir, 'db.sqlite');
+    console.log(`Opening database: ${dbPath}`);
+    const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READONLY, (err) => {
+        if (err) {
+            console.error('Failed to open database:', err.message);
+            throw err; // Propagate error to fail the test
+        }
+        console.log('Database opened successfully.');
+    });
+
+    // Helper function to query the database
+    const queryDb = (sql: string, params: any[] = []) => {
+      return new Promise<any[]>((resolve, reject) => {
+        db.all(sql, params, (err, rows) => {
+          if (err) {
+            return reject(err);
+          }
+          resolve(rows);
+        });
+      });
+    };
+
+    console.log('Verifying accounts...');
+    for (const account of createdTestData.accounts) {
+      const rows = await queryDb('SELECT name, type, offbudget, closed FROM accounts WHERE id = ?', [account.id]);
+      assert.strictEqual(rows.length, 1, `Account ${account.name} (ID: ${account.id}) not found or found multiple times.`);
+      assert.strictEqual(rows[0].name, account.name, `Account name mismatch for ${account.id}`);
+      console.log(`Found account: ${rows[0].name} (Type: ${rows[0].type})`);
+    }
+
+    console.log('Verifying categories...');
+    for (const category of createdTestData.categories) {
+      const rows = await queryDb('SELECT name FROM categories WHERE id = ?', [category.id]);
+      assert.strictEqual(rows.length, 1, `Category ${category.name} (ID: ${category.id}) not found or found multiple times.`);
+      assert.strictEqual(rows[0].name, category.name, `Category name mismatch for ${category.id}`);
+      console.log(`Found category: ${rows[0].name}`);
+    }
+    
+    console.log('Verifying transactions (count and amounts for a specific account)...');
+    // Example: verify transactions for 'Test Checking Account'
+    const checkingAccount = createdTestData.accounts.find(acc => acc.name === 'Test Checking Account');
+    assert(checkingAccount, "Test Checking Account not found in test data for verification.");
+    assert(checkingAccount.id, "Test Checking Account ID is undefined.");
+
+    const dbTransactions = await queryDb('SELECT amount, payee_name, notes FROM transactions WHERE account_id = ? ORDER BY amount', [checkingAccount.id]);
+    assert.strictEqual(dbTransactions.length, 3, `Expected 3 transactions for ${checkingAccount.name}, found ${dbTransactions.length}`);
+    
+    // Amounts are in cents
+    const expectedAmounts = [-7500, -5000, 200000].sort((a,b) => a-b); // Sort to match query order
+    const actualAmounts = dbTransactions.map(t => t.amount).sort((a,b) => a-b);
+    assert.deepStrictEqual(actualAmounts, expectedAmounts, `Transaction amounts mismatch for ${checkingAccount.name}`);
+    console.log('Transaction amounts verified for Test Checking Account.');
+
+    // Verify a specific transaction's details (e.g., payee and notes for one of them)
+    const groceryTransaction = dbTransactions.find(t => t.amount === -5000);
+    assert(groceryTransaction, "Grocery transaction not found in backup for Test Checking Account");
+    assert.strictEqual(groceryTransaction.payee_name, 'Grocery Store', "Grocery transaction payee mismatch");
+    assert.strictEqual(groceryTransaction.notes, 'Test grocery transaction', "Grocery transaction notes mismatch");
+    console.log('Specific transaction details verified for grocery purchase.');
+
+
+    console.log('Database verification successful.');
+    db.close((err) => {
+        if (err) console.error('Error closing database:', err.message);
+        else console.log('Database closed.');
+    });
+
+    console.log('--- Backup Tool Test Succeeded ---');
+
+  } catch (error) {
+    console.error('--- Backup Tool Test Failed ---');
+    console.error(error);
+    throw error; // Re-throw to ensure the test runner catches it
+  } finally {
+    console.log('Cleaning up temporary directories...');
+    try {
+      await fs.rm(tempBackupDir, { recursive: true, force: true });
+      console.log(`Cleaned up temp backup dir: ${tempBackupDir}`);
+    } catch (e) {
+      console.error(`Error cleaning up ${tempBackupDir}:`, e);
+    }
+    try {
+      await fs.rm(tempExtractDir, { recursive: true, force: true });
+      console.log(`Cleaned up temp extract dir: ${tempExtractDir}`);
+    } catch (e) {
+      console.error(`Error cleaning up ${tempExtractDir}:`, e);
+    }
+  }
+}
+
+
+// Main function to orchestrate setup and tests
+async function main() {
+  let api;
+  let budgetSyncId: string | null = null;
+  let createdTestData: TestData | null = null;
+
+  try {
+    api = await initializeApi();
+    console.log('API initialized.');
+
+    const budget = await api.createBudget({ budgetName: 'TestBudgetForBackupTool' });
+    budgetSyncId = budget.id;
+    console.log(`Test budget created with sync ID: ${budgetSyncId}`);
+
+    createdTestData = await setupTestData(api, budgetSyncId);
+    console.log('Test data setup complete.');
+    
+    assert(createdTestData, "Test data was not created successfully."); // Should not happen if setupTestData resolves
+
+    await runBackupTest(budgetSyncId, createdTestData);
+    console.log("\nAll tests completed successfully.");
+
+  } catch (err) {
+    console.error('Error in test utilities script:', err);
+    if (err.message && err.message.includes('ECONNREFUSED')) {
+      console.error(`Connection refused. Ensure the Actual server is running at ${ACTUAL_SERVER_URL}.`);
+      console.error("You might need to run 'devenv up' or 'nix develop' in another terminal.");
+    }
+    process.exitCode = 1; // Indicate failure
+  } finally {
+    if (api) {
+      await cleanupTestData(); // Cleans client-side API session data
+      console.log('Shutting down API connection for test utilities...');
+      await api.shutdown();
+      console.log('API connection for test utilities shut down.');
+    }
+    // Server-side budget file (e.g., TestBudgetForBackupTool.actual) in ACTUAL_DATA_DIR
+    // is not automatically cleaned up by this script. This is usually fine for tests,
+    // or could be handled by `devenv clean` or a separate cleanup script if needed.
+    // For now, we are focusing on the backup tool's functionality.
+  }
+}
+
+// Execute main if the script is run directly
+if (require.main === module) {
+  main().catch(error => {
+    console.error("Unhandled error in main execution:", error);
+    process.exitCode = 1; // Indicate failure
+  });
+}
+
+### File: src/backup-tool.ts ###
+#!/usr/bin/env node
+// src/backup-tool.ts
+
+// Use namespace import for CommonJS compatibility
+import * as api from '@actual-app/api';
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
+import path from 'path';
+import fs from 'fs/promises'; // Import fs.promises for async file system operations
+import AdmZip from 'adm-zip'; // Import AdmZip for zipping
+import crypto from 'crypto'; // For creating unique names
+
+// Define an interface for expected argument types
+interface Arguments {
+    syncId: string;
+    backupDir: string;
+    _: (string | number)[]; // Positional arguments captured by yargs
+    $0: string; // Script name
+}
+
+// Flag to prevent double shutdown attempts from signal handlers and finally block
+let isShuttingDown = false;
+
+// --- Main Async Function ---
+(async (): Promise<void> => {
+    // --- Argument Parsing ---
+    const argv = await yargs(hideBin(process.argv))
+        .option('sync-id', {
+            alias: 's',
+            type: 'string',
+            description: 'Actual Budget Sync ID (UUID)',
+            demandOption: true, // Makes this flag required
+        })
+        .option('backup-dir', {
+            alias: 'd',
+            type: 'string',
+            description: 'Base directory for placing the final backup zip file',
+            default: 'backup', // Default value if flag is not provided
+        })
+        .usage('Usage: $0 --sync-id <uuid> [--backup-dir <path>]')
+        .help() // Enable --help flag
+        .alias('help', 'h')
+        .strict() // Report errors for unknown options
+        .parseAsync() as Arguments; // Parse arguments and assert type
+
+    const { syncId, backupDir } = argv;
+
+    // --- Environment Variable Handling ---
+    const serverURL: string | undefined = process.env.SERVER_URL;
+    const password: string | undefined = process.env.SERVER_PASSWORD;
+
+    if (!serverURL) {
+        console.error('Error: Environment variable SERVER_URL is not set.');
+        process.exit(1);
+    }
+    if (!password) {
+        console.error('Error: Environment variable SERVER_PASSWORD is not set.');
+        process.exit(1);
+    }
+
+    console.log(`Using Sync ID: ${syncId}`);
+    console.log(`Target Server URL: ${serverURL}`);
+    // Avoid logging the password!
+
+    // --- Backup Directory Preparation ---
+    // 1. Resolve and verify the FINAL destination directory for the zip
+    const resolvedBaseBackupDir = await resolveAndVerifyBaseDir(backupDir);
+
+    // 2. Create a unique temporary directory INSIDE the base dir for this run's API files
+    const runSpecificTempDir = await createRunSpecificTempDir(resolvedBaseBackupDir);
+    console.log(`Using temporary directory for API files: ${runSpecificTempDir}`);
+
+
+    let downloadedBudgetPath: string | null = null; // Path like /path/to/backup/temp_.../My-Finances-XYZ
+
+    // --- Actual API Interaction ---
+    try {
+        console.log('Initializing Actual API...');
+        // 3. Initialize API using the temporary directory
+        await api.init({
+            dataDir: runSpecificTempDir, // API uses the clean temp dir
+            serverURL: serverURL,
+            password: password,
+        });
+        console.log('API Initialized successfully.');
+
+        console.log(`Downloading budget for Sync ID: ${syncId}...`);
+        // 4. Download will place files inside runSpecificTempDir
+        await api.downloadBudget(syncId);
+        console.log('Budget downloaded successfully.');
+
+        // 5. Find the actual budget folder created *inside* the temp dir
+        console.log(`Locating downloaded budget folder in ${runSpecificTempDir}...`);
+        downloadedBudgetPath = await findCreatedBudgetDir(runSpecificTempDir);
+        if (!downloadedBudgetPath) {
+            throw new Error(`Could not find the downloaded budget directory inside ${runSpecificTempDir}.`);
+        }
+        console.log(`Found budget folder: ${downloadedBudgetPath}`);
+
+    } catch (error) {
+        console.error('Error during Actual API operation or finding budget folder:', error);
+        // Attempt to clean up the temp dir even on error before exiting
+        await deleteSourceDir(runSpecificTempDir, 'temporary run directory');
+        process.exit(1);
+    } finally {
+        // --- Shutdown API Connection ---
+        if (!isShuttingDown) {
+            isShuttingDown = true; // Prevent signal handlers from running shutdown again
+            try {
+                console.log('Shutting down Actual API connection...');
+                await api.shutdown();
+                console.log('API connection shut down.');
+            } catch (shutdownError) {
+                console.error('Error during final API shutdown:', shutdownError);
+                // If shutdown fails here, we might still want to exit successfully if the main task succeeded
+                // or exit with an error if shutdown is critical. Let's exit with error for now.
+                // process.exit(1); // Decide if shutdown failure should cause non-zero exit
+            }
+        }
+    }
+
+    // --- Zipping and Cleanup (only if download succeeded and path was found) ---
+    if (downloadedBudgetPath) {
+        try {
+            // 6. Create zip in the BASE directory, taking content from the downloaded path
+            console.log(`Zipping budget folder contents from: ${downloadedBudgetPath}`);
+            const zipFilePath = await createDatedZip(downloadedBudgetPath, resolvedBaseBackupDir);
+            console.log(`Successfully created zip file: ${zipFilePath}`);
+
+        } catch (zipError) {
+            console.error('Error during zipping:', zipError);
+            // Attempt cleanup before exiting
+            await deleteSourceDir(runSpecificTempDir, 'temporary run directory');
+            process.exit(1); // Exit with error if zipping fails
+        } finally {
+            // 7. Delete the entire temporary directory regardless of zip success/failure
+            // (if zip failed, we still want to clean up the temp artifacts)
+            await deleteSourceDir(runSpecificTempDir, 'temporary run directory');
+        }
+    } else {
+        console.warn("Skipping zip as the downloaded budget path was not found.");
+        // Clean up the temp dir even if the budget folder wasn't found within it
+        await deleteSourceDir(runSpecificTempDir, 'temporary run directory');
+        process.exit(1); // Exit with error because the primary goal likely failed
+    }
+
+
+    console.log('Backup process completed successfully.');
+    process.exit(0); // Explicitly exit with success status
+
+})().catch(err => {
+    // Catch top-level errors (e.g., argument parsing, unexpected issues before try/catch)
+    console.error("Script execution failed unexpectedly:", err);
+    // Note: This might leave temp dirs behind in rare cases of catastrophic failure
+    // before the main logic runs or if temp dir creation itself fails badly.
+    process.exit(1);
+});
+
+
+// --- Helper Functions ---
+
+/**
+ * Resolves the base backup directory path, creates it if necessary, and verifies write access.
+ * @param baseDir - The directory path specified by the user for the final zip file.
+ * @returns The resolved absolute path to the base backup directory.
+ */
+async function resolveAndVerifyBaseDir(baseDir: string): Promise<string> {
+    let resolvedPath: string;
+    try {
+        resolvedPath = path.resolve(baseDir);
+        console.log(`Ensuring base backup directory exists: ${resolvedPath}`);
+        // Ensure directory exists, creating intermediate directories if needed
+        await fs.mkdir(resolvedPath, { recursive: true });
+        // Check write permissions
+        await fs.access(resolvedPath, fs.constants.W_OK);
+        console.log(`Write access verified for base directory: ${resolvedPath}`);
+    } catch (err: any) {
+        console.error(`Error accessing base backup directory "${baseDir}" (resolved to "${path.resolve(baseDir)}"):`);
+        // Provide more specific feedback based on common error codes
+        if (err.code === 'EACCES') {
+            console.error('Permission denied. Please ensure the script has write access to the directory.');
+        } else if (err.code === 'ENOENT') {
+            // This shouldn't happen often with recursive mkdir, but good to check
+            console.error('Path component does not exist or is invalid.');
+        } else {
+            console.error(err.message); // General error message
+        }
+        process.exit(1); // Exit if directory preparation fails
+    }
+    return resolvedPath;
+}
+
+/**
+ * Creates a unique temporary subdirectory within the base directory for API operations for this run.
+ * @param baseDir - The resolved absolute path to the base backup directory.
+ * @returns The absolute path to the newly created temporary directory.
+ */
+async function createRunSpecificTempDir(baseDir: string): Promise<string> {
+    // Generate a unique name, e.g., "temp_actual_backup_abc123def"
+    const uniqueSuffix = crypto.randomBytes(8).toString('hex');
+    const tempDirName = `temp_actual_backup_${uniqueSuffix}`;
+    const tempDirPath = path.join(baseDir, tempDirName);
+    try {
+        await fs.mkdir(tempDirPath, { recursive: true }); // Ensure it's created
+        console.log(`Created temporary directory: ${tempDirPath}`);
+        // Double-check write access specifically to the temp dir (usually inherited)
+        await fs.access(tempDirPath, fs.constants.W_OK);
+        return tempDirPath;
+    } catch (error) {
+        console.error(`Failed to create or access temporary directory ${tempDirPath}:`, error);
+        process.exit(1); // Cannot proceed without a working temp directory
+    }
+}
+
+
+/**
+ * Finds the primary subdirectory created within the specified directory (expected to be the temp dir).
+ * Assumes the API creates exactly one subdirectory for the downloaded budget.
+ * @param searchDir - The absolute path to the directory to search within (the temp dir).
+ * @returns The absolute path to the found budget directory, or null if none/multiple found or error.
+ */
+async function findCreatedBudgetDir(searchDir: string): Promise<string | null> {
+    try {
+        const entries = await fs.readdir(searchDir, { withFileTypes: true });
+        const directories = entries.filter(entry => entry.isDirectory());
+
+        if (directories.length === 1) {
+            return path.join(searchDir, directories[0].name);
+        } else if (directories.length === 0) {
+            console.warn(`No subdirectories found in ${searchDir} after download.`);
+            return null;
+        } else {
+            console.warn(`Multiple subdirectories found in ${searchDir}. Cannot reliably determine the budget folder.`);
+            console.warn(`Found: ${directories.map(d => d.name).join(', ')}`);
+            return null; // Or handle ambiguity differently
+        }
+    } catch (error) {
+        console.error(`Error reading directory ${searchDir} to find budget folder:`, error);
+        return null;
+    }
+}
+
+/**
+ * Creates a zip file named YYYY-MM-DD <FolderName>.zip in the target directory,
+ * containing the contents of the source directory.
+ * @param sourceDirPath - Absolute path to the directory whose contents should be zipped (e.g., the budget folder inside temp).
+ * @param targetZipDir - Absolute path to the directory where the zip file should be saved (the base backup dir).
+ * @returns The absolute path to the created zip file.
+ */
+async function createDatedZip(sourceDirPath: string, targetZipDir: string): Promise<string> {
+    const folderName = path.basename(sourceDirPath); // e.g., "My-Finances-7a1809d"
+    const dateStr = getFormattedDate(new Date());
+    const zipFileName = `${dateStr} ${folderName}.zip`;
+    const zipFilePath = path.join(targetZipDir, zipFileName); // Place zip in the BASE dir
+
+    console.log(`Creating zip: ${zipFilePath} from contents of ${sourceDirPath}`);
+
+    try {
+        const zip = new AdmZip();
+        // Add the contents of the source directory directly into the zip root
+        zip.addLocalFolder(sourceDirPath, '', (filename) => {
+            // Example filter: Exclude hidden files/folders if needed
+            // if (path.basename(filename).startsWith('.')) return false;
+            return true;
+        });
+        // Write the zip file asynchronously
+        await zip.writeZipPromise(zipFilePath);
+        return zipFilePath;
+    } catch (error) {
+        console.error(`Failed to create zip file at ${zipFilePath}:`, error);
+        throw error; // Re-throw to be caught by the caller
+    }
+}
+
+/**
+ * Deletes the specified directory recursively and forcefully.
+ * @param dirPath - Absolute path to the directory to delete.
+ * @param description - A descriptive name for the directory being deleted (for logging).
+ */
+async function deleteSourceDir(dirPath: string, description: string = 'directory'): Promise<void> {
+    console.log(`Deleting ${description}: ${dirPath}`);
+    try {
+        await fs.rm(dirPath, { recursive: true, force: true, maxRetries: 3 }); // Added retries for robustness
+        console.log(`Successfully deleted ${description}.`);
+    } catch (error: any) {
+        // If it doesn't exist, that's fine (already deleted or failed creation)
+        if (error.code === 'ENOENT') {
+            console.log(`${description} ${dirPath} not found (already deleted or failed creation).`);
+            return;
+        }
+        // Log other errors but don't necessarily exit, especially if called during cleanup
+        console.error(`Failed to delete ${description} ${dirPath}:`, error);
+        // Consider if specific errors here should halt the process or just be warnings
+    }
+}
+
+/**
+ * Formats a Date object into a string 'YYYY-MM-DD'.
+ * @param date - The Date object to format.
+ * @returns The formatted date string.
+ */
+function getFormattedDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0'); // Month is 0-indexed
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+/**
+ * Handles graceful shutdown on receiving signals (SIGINT, SIGTERM).
+ * Attempts to shut down the API connection before exiting.
+ * @param signal - The signal received ('SIGINT' or 'SIGTERM').
+ */
+async function gracefulShutdown(signal: string): Promise<void> {
+    if (isShuttingDown) return; // Prevent concurrent shutdowns
+    isShuttingDown = true;
+    console.log(`\nReceived ${signal}. Attempting graceful shutdown...`);
+    try {
+        // Check if API was likely initialized and shutdown exists
+        if (api && typeof api.shutdown === 'function') {
+            console.log('Shutting down Actual API connection via signal handler...');
+            await api.shutdown();
+            console.log('API connection shut down successfully via signal handler.');
+        } else {
+            console.log('API not initialized or shutdown function unavailable during signal handling.');
+        }
+    } catch (shutdownError) {
+        console.error(`Error during API shutdown on ${signal}:`, shutdownError);
+    } finally {
+        // Exit with a non-zero code to indicate interruption
+        console.log(`Exiting due to ${signal}.`);
+        process.exit(1);
+    }
+}
+
+// --- Signal Handlers ---
+// Handle Ctrl+C
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+// Handle termination signals (e.g., from kill command)
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+### File: tsconfig.json ###
+{
+  "compilerOptions": {
+    /* Language and Environment */
+    "target": "es2016", /* Set the JavaScript language version... */
+    "lib": [
+      "es2016"
+    ], /* Add standard ES2016 library */ /* <--- ADD or MODIFY this line */
+    "types": [
+      "node"
+    ], /* Specify type package names to be included. */ /* <--- ADD THIS LINE */
+    /* Modules */
+    "module": "commonjs", /* Specify what module code is generated. */
+    "rootDir": "./src", /* Specify the root folder... */
+    "outDir": "./dist", /* Specify an output folder... */
+    /* Interop Constraints */
+    "esModuleInterop": true, /* Emit additional JavaScript... */
+    "forceConsistentCasingInFileNames": true, /* Ensure that casing is correct... */
+    /* Type Checking */
+    "strict": true, /* Enable all strict type-checking options. */
+    /* Completeness */
+    "skipLibCheck": true /* Skip type checking all .d.ts files. */
+  }
+}
+### File: wrapper.sh ###
+#!/usr/bin/env bash
+
+# Wrapper script for actual-backup-tool (NO CD version)
+
+# Variables substituted by Nix during build:
+# nodejs_bin_path -> path to node binary
+# app_root        -> path to libexec directory where code and node_modules reside
+# entry_point     -> relative path to the main JS file within app_root
+
+# Construct the absolute path to the entry point script within the Nix store
+entry_point_abs="@app_root@/@entry_point@"
+
+# Execute the Node.js script using its ABSOLUTE path, passing all arguments ($@).
+# The Current Working Directory remains the one where 'nix run' was invoked.
+# Node.js will find 'node_modules' relative to the location of '$entry_point_abs'.
+exec "@nodejs_bin_path@" "$entry_point_abs" "$@"
