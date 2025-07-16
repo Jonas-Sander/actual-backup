@@ -2,7 +2,7 @@
 > Make sure that the `@actual-app/api` in `package.json` matches the version running on your actual instace.
 > Otherwise importing may fail.
 
-Current supported version: `"@actual-app/api": "25.6.1"`.  
+Current supported version: `"@actual-app/api": "25.7.1"`.  
 Can be changed via `package.json`.
 
 A tool to automate the export of data of an actual user.  
