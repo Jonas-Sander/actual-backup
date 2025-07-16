@@ -34,7 +34,7 @@
           # Ensures reproducible dependency fetching.
           # If dependencies change (package-lock.json updated), `nix build` will fail
           # with a hash mismatch, providing the correct hash to paste here.
-          npmDepsHash = "sha256-bc3CTOoad81u1O/QjSZXQGuyPpJou19Gq944jo0jDD0=";
+          npmDepsHash = "sha256-AN0comIgRz3fFYu7UV2Mk5d4szrWM5sCLD/AwZsHqRg=";
           # npmDepsHash = pkgs.lib.fakeHash;
 
           # Allow build scripts to write to the npm cache if needed.
