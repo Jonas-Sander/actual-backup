@@ -1,0 +1,23 @@
+{
+  "name": "actual_backup_tool",
+  "version": "1.0.0",
+  "description": "Tool to backup Actual Budget data",
+  "main": "dist/backup-tool.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/backup-tool.js",
+    "dev": "ts-node src/backup-tool.ts"
+  },
+  "dependencies": {
+    "@actual-app/api": "25.4.0",
+    "adm-zip": "^0.5.16",
+    "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.7",
+    "@types/node": "^22.14.0",
+    "@types/yargs": "^17.0.33",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}
