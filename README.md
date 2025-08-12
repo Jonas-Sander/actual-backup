@@ -78,11 +78,14 @@ $ ls backup
 #### Creating a new version
 1. In `versions.nix`, add a new version at the top of the file with `makeCurrentVersion`.
 2. Update actual version in `README.md` and `package.json` (e.g. `25.7.1` to `25.8.0`).
-3. Run `devenv shell`
-4. Run `npm install` to update the package.lock file (otherwise `nix build` won't work)
-7. Test the version with `nix run`.
-8. If it works, commit the change or open a PR.
+3. In `actual-backup.nix`, update the second part of the version number (e.g. `1.0.0-25.7.1` to `1.0.0-25.8.0`)
+4. Run `devenv shell`
+5. Run `npm install` to update the package.lock file (otherwise `nix build` won't work)
+6. Test the version with `nix run`.
+7. If it works, commit the change or open a PR.
 
 Note that the old versions are only guaranteed to work as long as the source code does not change.
 If the source code is changed, all versions should be tested
 (or abandoned, as a previous commit can be used for the flake input if needed).
+If changes to the source code are made, the first part of the version number needs to be updated in `actual-backup.nix` and `flake.nix`
+(e.g. `1.0.0-25.7.1` to `1.1.0-25.8.0`)

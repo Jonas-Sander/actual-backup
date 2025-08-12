@@ -5,7 +5,7 @@
   nodePackages,
   typescript ? nodePackages.typescript,
   nodejs,
-  version ? "25.7.1",
+  version ? "1.0.0-25.7.1",
   dependencyDir ? ".",
   ...
 }:

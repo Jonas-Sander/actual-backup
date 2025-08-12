@@ -36,7 +36,7 @@
         forVersion =
           version:
           actual-backup.override {
-            inherit version;
+            version = "1.0.0-${version}";
             inherit (getVersionInfo version) npmDepsHash dependencyDir;
           };
 
@@ -45,7 +45,7 @@
       in
       {
         packages.actual-backup = {
-          defalut = actual-backup;
+          default = actual-backup;
           inherit forVersion forActualServer forNixpkgsActualServer;
         }
         // lib.mapAttrs (n: v: forVersion n) versionInfo;
