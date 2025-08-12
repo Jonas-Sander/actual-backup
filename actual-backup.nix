@@ -1,24 +1,23 @@
 {
   buildNpmPackage,
+  importNpmLock,
   lib,
   nodePackages,
   typescript ? nodePackages.typescript,
   nodejs,
   version ? "25.7.1",
-  # Hash of the node_modules structure based on package-lock.json.
-  # Ensures reproducible dependency fetching.
-  # If dependencies change (package-lock.json updated), `nix build` will fail
-  # with a hash mismatch, providing the correct hash to paste here.
-  npmDepsHash ? "sha256-AN0comIgRz3fFYu7UV2Mk5d4szrWM5sCLD/AwZsHqRg=",
-  # npmDepsHash ? lib.fakeHash,
+  dependencyDir ? ".",
   ...
 }:
 buildNpmPackage {
   pname = "actual-backup-tool";
 
-  inherit version npmDepsHash;
+  inherit version; # npmDepsHash;
 
   src = ./.;
+
+  npmDeps = importNpmLock { npmRoot = ./${dependencyDir}; };
+  npmConfigHook = importNpmLock.npmConfigHook;
 
   # Allow build scripts to write to the npm cache if needed.
   makeCacheWritable = true;
@@ -94,5 +93,6 @@ buildNpmPackage {
       "Jonas-Sander"
     ];
     platforms = platforms.linux ++ platforms.darwin;
+    mainProgram = "actual-backup";
   };
 }
