@@ -19,15 +19,39 @@
       system:
       let
         pkgs = import nixpkgs { inherit system; };
+        lib = pkgs.lib;
+
+        versionInfo = import ./versions.nix;
+        availableVersions = lib.attrNames versionInfo;
 
         actual-backup = pkgs.callPackage ./actual-backup.nix { };
+
+        getVersionInfo =
+          version:
+          if lib.asserts.assertOneOf "actual-backup version" version availableVersions then
+            versionInfo.${version}
+          else
+            null;
+
+        forVersion =
+          version:
+          actual-backup.override {
+            version = "1.0.0-${version}";
+            inherit (getVersionInfo version) npmDepsHash dependencyDir;
+          };
+
+        forActualServer = actual-server: forVersion actual-server.version;
+        forNixpkgsActualServer = forActualServer pkgs.actual-server;
       in
       {
-        packages = {
-          inherit actual-backup;
-          # Default package: `nix build .` will build this package
+        packages.actual-backup = {
           default = actual-backup;
-        };
+          inherit forVersion forActualServer forNixpkgsActualServer;
+        }
+        // lib.mapAttrs (n: v: forVersion n) versionInfo;
+
+        # Default package: `nix build .` will build this package
+        packages.default = actual-backup;
 
         # Define runnable applications provided by the flake
         apps.actual-backup = {
@@ -37,7 +61,10 @@
         };
 
         # Default application: `nix run .` will run this application
-        apps.default = actual-backup;
+        apps.default = {
+          type = "app";
+          program = "${actual-backup}/bin/actual-backup";
+        };
       }
     );
 }
