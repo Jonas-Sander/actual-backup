@@ -41,9 +41,9 @@ $ ls backup
 1. Update actual version in `README.md` and `package.json` (e.g. `25.4.0` to `25.5.0`).
 2. Run `devenv shell`
 3. Run `npm install` to update the package.lock file (otherwise `nix build` won't work)
-4. Replace `npmDepsHash = "sha256-ZTfXjTZE5f...";` in `flake.nix` with `npmDepsHash = pkgs.lib.fakeHash;`
+4. Replace `npmDepsHash ? "sha256-ZTfXjTZE5f...";` in `actual-backup.nix` with `npmDepsHash ? lib.fakeHash;`
 5. Run `nix build` and copy the `got:    sha256-HaOhKSfkFC4PAvO...`
-6. Replace `npmDepsHash = pkgs.lib.fakeHash;` with the new hash (i.e. `npmDepsHash = "sha256-HaOhKSfkFC4PAvO...";`).
+6. Replace `npmDepsHash ? lib.fakeHash;` with the new hash (i.e. `npmDepsHash ? "sha256-HaOhKSfkFC4PAvO...";`).
 7. Run `nix build` again. It should now succeed.
 8. Test changes.
 9. If it works, commit the change or open a PR.
