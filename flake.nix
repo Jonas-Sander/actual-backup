@@ -3,41 +3,38 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-
-    # flake-utils: Provides helper functions to define outputs for multiple systems easily.
-    flake-utils.url = "github:numtide/flake-utils";
   };
 
   outputs =
     {
       self,
       nixpkgs,
-      flake-utils,
       ... # Allows for potential future inputs
     }:
-    flake-utils.lib.eachDefaultSystem (
-      system:
-      let
-        pkgs = import nixpkgs { inherit system; };
-
+    let
+      inherit (nixpkgs) lib;
+      forAllSystems =
+        function:
+        lib.genAttrs [ "x86_64-linux" "x86_64-darwin" "aarch64-linux" "aarch64-darwin" ] (
+          system: function nixpkgs.legacyPackages.${system}
+        );
+    in
+    {
+      packages = forAllSystems (pkgs: {
         actual-backup = pkgs.callPackage ./actual-backup.nix { };
-      in
-      {
-        packages = {
-          inherit actual-backup;
-          # Default package: `nix build .` will build this package
-          default = actual-backup;
-        };
+        # Default package: `nix build .` will build this package
+        default = self.packages.${pkgs.system}.actual-backup;
+      });
 
-        # Define runnable applications provided by the flake
-        apps.actual-backup = {
-          type = "app"; # Standard type for runnable applications
+      # Define runnable applications provided by the flake
+      apps = forAllSystems (pkgs: {
+        default = self.packages.${pkgs.system}.actual-backup;
+
+        actual-backup = {
+          type = "app";
           # The command to execute when running `nix run .#actual-backup`
-          program = "${actual-backup}/bin/actual-backup";
+          program = lib.getExe self.packages.${pkgs.system}.actual-backup;
         };
-
-        # Default application: `nix run .` will run this application
-        apps.default = actual-backup;
-      }
-    );
+      });
+    };
 }
