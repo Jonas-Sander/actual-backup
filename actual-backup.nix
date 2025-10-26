@@ -93,6 +93,9 @@ buildNpmPackage {
     maintainers = [
       "Jonas-Sander"
     ];
+
+    mainProgram = "actual-backup";
+
     platforms = platforms.linux ++ platforms.darwin;
   };
 }
