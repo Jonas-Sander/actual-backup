@@ -14,6 +14,7 @@ import crypto from 'crypto'; // For creating unique names
 interface Arguments {
     syncId: string;
     backupDir: string;
+    backupFilename?: string;
     _: (string | number)[]; // Positional arguments captured by yargs
     $0: string; // Script name
 }
@@ -37,13 +38,19 @@ let isShuttingDown = false;
             description: 'Base directory for placing the final backup zip file',
             default: 'backup', // Default value if flag is not provided
         })
-        .usage('Usage: $0 --sync-id <uuid> [--backup-dir <path>]')
+        .option('backup-filename', {
+            alias: 'f',
+            type: 'string',
+            description: 'Filename to use for the final backup zip file',
+            default: undefined, // Default value if flag is not provided
+        })
+        .usage('Usage: $0 --sync-id <uuid> [--backup-dir <path>] [--backup-filename <filename>]')
         .help() // Enable --help flag
         .alias('help', 'h')
         .strict() // Report errors for unknown options
         .parseAsync() as Arguments; // Parse arguments and assert type
 
-    const { syncId, backupDir } = argv;
+    const { syncId, backupDir, backupFilename } = argv;
 
     // --- Environment Variable Handling ---
     const serverURL: string | undefined = process.env.SERVER_URL;
@@ -124,7 +131,7 @@ let isShuttingDown = false;
         try {
             // 6. Create zip in the BASE directory, taking content from the downloaded path
             console.log(`Zipping budget folder contents from: ${downloadedBudgetPath}`);
-            const zipFilePath = await createDatedZip(downloadedBudgetPath, resolvedBaseBackupDir);
+            const zipFilePath = await createDatedZip(downloadedBudgetPath, resolvedBaseBackupDir, backupFilename);
             console.log(`Successfully created zip file: ${zipFilePath}`);
 
         } catch (zipError) {
@@ -247,10 +254,10 @@ async function findCreatedBudgetDir(searchDir: string): Promise<string | null> {
  * @param targetZipDir - Absolute path to the directory where the zip file should be saved (the base backup dir).
  * @returns The absolute path to the created zip file.
  */
-async function createDatedZip(sourceDirPath: string, targetZipDir: string): Promise<string> {
+async function createDatedZip(sourceDirPath: string, targetZipDir: string, backupFilename?: string): Promise<string> {
     const folderName = path.basename(sourceDirPath); // e.g., "My-Finances-7a1809d"
     const dateStr = getFormattedDate(new Date());
-    const zipFileName = `${dateStr} ${folderName}.zip`;
+    const zipFileName = backupFilename ?? `${dateStr} ${folderName}.zip`;
     const zipFilePath = path.join(targetZipDir, zipFileName); // Place zip in the BASE dir
 
     console.log(`Creating zip: ${zipFilePath} from contents of ${sourceDirPath}`);
