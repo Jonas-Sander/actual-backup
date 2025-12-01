@@ -9,7 +9,7 @@
     "dev": "ts-node src/backup-tool.ts"
   },
   "dependencies": {
-    "@actual-app/api": "25.9.0",
+    "@actual-app/api": "25.11.0",
     "adm-zip": "^0.5.16",
     "yargs": "^17.7.2"
   },
