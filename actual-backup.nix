@@ -4,12 +4,12 @@
   nodePackages,
   typescript ? nodePackages.typescript,
   nodejs,
-  version ? "26.3.0",
+  version ? "26.6.0",
   # Hash of the node_modules structure based on package-lock.json.
   # Ensures reproducible dependency fetching.
   # If dependencies change (package-lock.json updated), `nix build` will fail
   # with a hash mismatch, providing the correct hash to paste here.
-  npmDepsHash ? "sha256-wzfIBUVkietVyP8LgR4m2f8LjZuAce+gGIOs8b0bpng=",
+  npmDepsHash ? "sha256-MV7qEDQq4Ygf74XEpVYjCl8GpB376dcNEBN0YF6a77I=",
   # npmDepsHash ? lib.fakeHash,
   ...
 }:
