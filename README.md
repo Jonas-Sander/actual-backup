@@ -38,10 +38,10 @@ $ ls backup
 ```
 
 ### Updating actual version
-1. Update actual version in `README.md`, `package.json` and `actual-backup.nix` (e.g. `25.4.0` to `25.5.0`). You can use the script `./replace_actual_api_version_with_latest_npm_version.sh`.
+1. Update actual version in `README.md`, `package.json` and [`actual-backup.nix`](actual-backup.nix) (e.g. `25.4.0` to `25.5.0`). You can use the script [`./replace_actual_api_version_with_latest_npm_version.sh`](replace_actual_api_version_with_latest_npm_version.sh).
 2. Run `devenv shell`
 3. Run `npm install` to update the package.lock file (otherwise `nix build` won't work)
-4. Replace `npmDepsHash ? "sha256-ZTfXjTZE5f...";` in `actual-backup.nix` with `npmDepsHash ? lib.fakeHash;`
+4. Replace `npmDepsHash ? "sha256-ZTfXjTZE5f...";` in [`actual-backup.nix`](actual-backup.nix) with `npmDepsHash ? lib.fakeHash;`
 5. Run `nix build` and copy the `got:    sha256-HaOhKSfkFC4PAvO...`
 6. Replace `npmDepsHash ? lib.fakeHash;` with the new hash (i.e. `npmDepsHash ? "sha256-HaOhKSfkFC4PAvO...";`).
 7. Run `nix build` again. It should now succeed.
