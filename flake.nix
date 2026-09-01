@@ -25,7 +25,9 @@
     in
     {
       packages = forAllSystems (pkgs: rec {
-        actual-backup = pkgs.callPackage ./actual-backup.nix { };
+        actual-backup = pkgs.callPackage ./actual-backup.nix { 
+          nodejs = pkgs.nodejs_22;
+        };
         # Default package: `nix build .` will build this package
         default = actual-backup;
       });
