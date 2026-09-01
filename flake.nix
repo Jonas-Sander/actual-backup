@@ -25,7 +25,11 @@
     in
     {
       packages = forAllSystems (pkgs: rec {
-        actual-backup = pkgs.callPackage ./actual-backup.nix { };
+        actual-backup = pkgs.callPackage ./actual-backup.nix { 
+          # The Node module better_sqlite3 lead to an error when building with Node 24,
+          # so we are using Node 22 instead.
+          nodejs = pkgs.nodejs_22;
+        };
         # Default package: `nix build .` will build this package
         default = actual-backup;
       });
