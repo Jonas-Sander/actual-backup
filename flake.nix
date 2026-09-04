@@ -29,7 +29,7 @@
           # See https://actualbudget.org/docs/releases/#2690:
           # Breaking change
           # This release updated the Node version for our container images to Node 24.
-          nodejs = pkgs.nodejs_24;
+          nodejs = pkgs.nodejs_22;
         };
         # Default package: `nix build .` will build this package
         default = actual-backup;
