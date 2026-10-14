@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/backup-tool.js",
-    "dev": "ts-node src/backup-tool.ts"
+    "dev": "ts-node src/backup-tool.ts",
+    "update-actual": "./update.sh"
   },
   "dependencies": {
     "@actual-app/api": "26.9.0",

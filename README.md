@@ -38,12 +38,28 @@ $ ls backup
 ```
 
 ### Updating actual version
-1. Update actual version in `README.md`, `package.json` and [`actual-backup.nix`](actual-backup.nix) (e.g. `25.4.0` to `25.5.0`). You can use the script [`./replace_actual_api_version_with_latest_npm_version.sh`](replace_actual_api_version_with_latest_npm_version.sh).
-2. Run `devenv shell`
-3. Run `npm install` to update the package.lock file (otherwise `nix build` won't work)
-4. Replace `npmDepsHash ? "sha256-ZTfXjTZE5f...";` in [`actual-backup.nix`](actual-backup.nix) with `npmDepsHash ? lib.fakeHash;`
-5. Run `nix build` and copy the `got:    sha256-HaOhKSfkFC4PAvO...`
-6. Replace `npmDepsHash ? lib.fakeHash;` with the new hash (i.e. `npmDepsHash ? "sha256-HaOhKSfkFC4PAvO...";`).
-7. Run `nix build` again. It should now succeed.
-8. Test changes.
-9. If it works, commit the change or open a PR.
+
+#### Fully automated (recommended)
+Run the automated update script:
+```bash
+./update.sh
+```
+Or via npm:
+```bash
+npm run update-actual
+```
+
+This will automatically:
+1. Detect the latest `@actual-app/api` release from the npm registry.
+2. Create and switch to a dedicated branch (`update-to-actual-<version>`).
+3. Update `package.json`, `package-lock.json`, [`actual-backup.nix`](actual-backup.nix), and [`README.md`](README.md).
+4. Compute the exact `npmDepsHash` using `prefetch-npm-deps`.
+5. Verify that the package builds cleanly with `nix build`.
+6. Commit the changes and open a GitHub Pull Request via `gh`.
+
+**Options:**
+- `./update.sh [version]`: Update to an explicit version instead of the latest npm version.
+- `./update.sh --no-commit`: Apply updates, recalculate hash, test nix build, but leave files uncommitted.
+- `./update.sh --no-pr`: Apply updates, recalculate hash, test nix build, and commit locally without pushing or creating a PR.
+- `./update.sh --check`: Check if an update is available without making changes.
+- `./update.sh --dry-run`: Preview changes without modifying files.
