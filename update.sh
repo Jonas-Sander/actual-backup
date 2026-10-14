@@ -38,11 +38,13 @@ Options:
   --no-pr             Commit changes locally, but do not push or create a PR.
   --no-push           Do not push branch to origin. Implies --no-pr.
   -f, --force         Proceed even if a branch or open PR already exists.
+  --undo [VERSION]    Undo an update: closes the open PR, deletes local & remote branches.
   -h, --help          Show this help message.
 
 Examples:
   $(basename "$0")              # Full automatic update & PR creation to latest version
   $(basename "$0") 26.10.0       # Update to specific version and create PR
+  $(basename "$0") --undo        # Revert/delete current update PR and branch
   $(basename "$0") --check       # Only check for new version (exit code 0 if up to date, 2 if update available)
   $(basename "$0") --no-commit   # Update files, recalculate hash, and test build, leave uncommitted
   $(basename "$0") --no-pr       # Update files, recalculate hash, test nix build, and commit locally
@@ -53,6 +55,10 @@ EOF
 # Parse command line options
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --undo)
+      shift
+      exec "${REPO_ROOT}/undo-update.sh" "$@"
+      ;;
     -h|--help)
       usage
       ;;

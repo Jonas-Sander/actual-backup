@@ -63,3 +63,4 @@ This will automatically:
 - `./update.sh --no-pr`: Apply updates, recalculate hash, test nix build, and commit locally without pushing or creating a PR.
 - `./update.sh --check`: Check if an update is available without making changes.
 - `./update.sh --dry-run`: Preview changes without modifying files.
+- `./update.sh --undo [version]`: Revert an update by closing its open PR and deleting local and remote branches.
