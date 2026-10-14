@@ -10,7 +10,7 @@
     "update-actual": "./update.sh"
   },
   "dependencies": {
-    "@actual-app/api": "26.9.0",
+    "@actual-app/api": "26.10.0",
     "adm-zip": "^0.5.16",
     "yargs": "^17.7.2"
   },
