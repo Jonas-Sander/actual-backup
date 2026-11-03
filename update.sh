@@ -29,7 +29,7 @@ Usage: $(basename "$0") [OPTIONS] [VERSION]
 Automates updating @actual-app/api to the latest (or specified) version.
 
 Arguments:
-  VERSION             Target version (e.g. 26.10.0). Defaults to latest on npm.
+  VERSION             Target version (e.g. 26.11.0). Defaults to latest on npm.
 
 Options:
   -c, --check         Check if an update is available without making changes.
@@ -43,7 +43,7 @@ Options:
 
 Examples:
   $(basename "$0")              # Full automatic update & PR creation to latest version
-  $(basename "$0") 26.10.0       # Update to specific version and create PR
+  $(basename "$0") 26.11.0       # Update to specific version and create PR
   $(basename "$0") --undo        # Revert/delete current update PR and branch
   $(basename "$0") --check       # Only check for new version (exit code 0 if up to date, 2 if update available)
   $(basename "$0") --no-commit   # Update files, recalculate hash, and test build, leave uncommitted
